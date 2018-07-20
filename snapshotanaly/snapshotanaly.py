@@ -9,11 +9,26 @@ session = boto3.Session(profile_name='pytrain')
 ec2 = session.resource('ec2')
 
 # List ec2 instances
-@click.command()
-def list_instamces():
+@click.group()
+def instances():
+    """Commands for instances"""
+
+@instances.command('list')
+@click.option('--project',default=None,
+    help='Only instances for project (tag Project:<name>)')
+def list_instamces(project):
     "List EC2 instances"
   
-    for i in ec2.instances.all():
+    instances = []
+
+    if project:
+        filters = [{'Name':'tag:Project', 'Values':[project]}]
+        instances = ec2.instances.filter(Filters=filters)
+    else:
+        instances = ec2.instances.all()
+
+    for i in instances:
+        tags = {t['Key']:t['Value'] for t in i.tags or []}
         print('|'.join((
             i.id,
             i.instance_type,
@@ -21,9 +36,35 @@ def list_instamces():
             i.state['Name'],
             i.public_dns_name,
             i.private_ip_address,
-            i.tags[0]['Value'])))
+            tags.get('Project', 'No Project'),
+            tags.get('Name', 'No Name'))))
 
     return()
 
+@instances.command('stop')
+@click.option('--project',default=None,
+    help='Only instances for project (tag Project:<name>)')
+def stop_instamces(project):
+    "Stop EC2 instances"
+  
+    instances = []
+
+    if project:
+        filters = [{'Name':'tag:Project', 'Values':[project]}]
+        instances = ec2.instances.filter(Filters=filters)
+    else:
+        instances = ec2.instances.all()
+
+    for i in instances:
+        tags = {t['Key']:t['Value'] for t in i.tags or []}
+        
+        if i.state['Name'] == 'stopped':
+            print('Instance {0} {1} is alredy {2}'.format(i.id,tags.get('Name', 'No Name Avail'),i.state['Name'])) 
+        elif not i.state['Name'] == 'running':
+            print('Instance {0} {1} is not in a running state - {2}'.format(i.id,tags.get('Name', 'No Name Avail'),i.state['Name']))
+        else:
+            print('Stopping instance {0} {1} - {2}'.format(i.id,tags.get('Name', 'No Name Avail'),i.state['Name']))
+            i.stop()
+
 if __name__ == '__main__':
-    list_instamces()
+    instances()
