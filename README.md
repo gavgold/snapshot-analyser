@@ -19,5 +19,8 @@ aws configure --profile snapshotanaly
 
 ## Running
 ```
-pipenv run "python snapshotanaly/snapshotanaly.py"`
+pipenv run "python snapshotanaly/snapshotanaly.py <command> [--project=<PROJECT>]"
 ```
+
+*command* list / start / stop
+*project* Project tag to identify instances on which to take action (optional)
