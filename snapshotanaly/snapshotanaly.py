@@ -21,6 +21,10 @@ def filter_instances(project):
 
     return instances
 
+def has_pending_snapshot(volume):
+    snapshots = list(volume.snapshots.all())
+    return snapshots and snapshots[0].state == 'pending'
+
 # cli group of commands
 @click.group()
 def cli():
@@ -168,22 +172,25 @@ def create_snapshot(project):
     for i in instances:
       tags = {t['Key']:t['Value'] for t in i.tags or []}
       for v in i.volumes.all():
-        # i.stop()
-        # i.wait_until_stopped()
-        v.create_snapshot(
-            Description='created by snapshotanaly',
-            DryRun=False
-        )
-        print(", ".join((
-            "Creating snapshot: ",
-            i.id,
-            v.id,
-            v.volume_type,
-            str(v.size) + "GiB",
-            tags.get('Project', 'No Project'),
-            tags.get('Name', '-')
-            )))
-        # i.start()
+        if has_pending_snapshot(v):
+            print("  Skipping snapshot of {0} as a snapshot is already in progress for this volume".format(v.id))
+        else:    
+            # i.stop()
+            # i.wait_until_stopped()
+            v.create_snapshot(
+                Description='created by snapshotanaly',
+                DryRun=False
+            )
+            print(", ".join((
+                "Creating snapshot: ",
+                i.id,
+                v.id,
+                v.volume_type,
+                str(v.size) + "GiB",
+                tags.get('Project', 'No Project'),
+                tags.get('Name', '-')
+                )))
+            # i.start()
 
     return()
 
