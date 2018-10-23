@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "/Users/Gavin/.local/share/virtualenvs/snapshot-analyser-qpeeRxI0/bin/python"
+    "python.pythonPath": "/Users/Gavin/.local/share/virtualenvs/snapshot-analyser-qpeeRxI0/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
 }

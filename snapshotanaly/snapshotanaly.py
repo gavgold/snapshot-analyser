@@ -21,14 +21,77 @@ def filter_instances(project):
 
     return instances
 
-# List ec2 instances
+# cli group of commands
 @click.group()
+def cli():
+    """Snapshot Analyser manages instances and snapshots"""
+
+@cli.group('volumes')
+def volumes():
+    """Commands for volumes"""
+
+@volumes.command('list')
+@click.option('--project',default=None,
+    help='Only volumes for instances for the supplied project (tag Project:<name>)')
+def list_volumes(project):
+    "List volumes"
+
+    instances = filter_instances(project)
+
+    for i in instances:
+        tags = {t['Key']:t['Value'] for t in i.tags or []}
+        for v in i.volumes.all():
+          print(", ".join((
+          i.id,
+          v.id,
+          v.state,
+          v.volume_type,
+          str(v.size) + "GiB",
+          v.encrypted and "Encrypted" or "Not Encrypted",
+          tags.get('Project', 'No Project'),
+          tags.get('Name', '-')
+        )))
+    return()
+   
+@cli.group('snapshots')
+def snapshots():
+    """Commands for volumes"""
+
+@snapshots.command('list')
+@click.option('--project',default=None,
+    help='Only snapshots of volumes for instances for the supplied project (tag Project:<name>)')
+def list_snapshots(project):
+    "List snapshots"
+
+    instances = filter_instances(project)
+
+    for i in instances:
+      tags = {t['Key']:t['Value'] for t in i.tags or []}
+      for v in i.volumes.all():
+        for s in v.snapshots.all():
+            print(", ".join((
+              i.id,
+              v.id,
+              v.volume_type,
+              str(v.size) + "GiB",
+              s.id,
+              s.start_time.strftime("%c"),
+              s.progress,
+              s.state,
+              s.description,
+              tags.get('Project', 'No Project'),
+              tags.get('Name', '-')
+              )))
+    return()
+
+# List ec2 instances
+@cli.group('instances')
 def instances():
     """Commands for instances"""
 
 @instances.command('list')
 @click.option('--project',default=None,
-    help='Only instances for project (tag Project:<name>)')
+    help='Only instances for the supplied project (tag Project:<name>)')
 def list_instamces(project):
     "List EC2 instances"
   
@@ -44,7 +107,7 @@ def list_instamces(project):
             i.public_dns_name,
             i.private_ip_address,
             tags.get('Project', 'No Project'),
-            tags.get('Name', 'No Name'))))
+            tags.get('Name', '-'))))
 
     return()
 
@@ -89,6 +152,35 @@ def start_instamces(project):
             i.start()
         return
 
+@instances.command('snapshot')
+@click.option('--project',default=None,
+    help='Only instances for the supplied project (tag Project:<name>)')
+def create_snapshot(project):
+    "Create snapshot of EC2 instance volumes"
+  
+    instances = filter_instances(project)
+
+    for i in instances:
+      tags = {t['Key']:t['Value'] for t in i.tags or []}
+      for v in i.volumes.all():
+        # i.stop()
+        # i.wait_until_stopped()
+        v.create_snapshot(
+            Description='created by snapshotanaly',
+            DryRun=False
+        )
+        print(", ".join((
+            "Creating snapshot: ",
+            i.id,
+            v.id,
+            v.volume_type,
+            str(v.size) + "GiB",
+            tags.get('Project', 'No Project'),
+            tags.get('Name', '-')
+            )))
+        # i.start()
+
+    return()
 
 if __name__ == '__main__':
-    instances()
+    cli()
